@@ -26,12 +26,13 @@ class _CheckpointMapState extends State<CheckpointMap> {
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
   final CheckpointService checkpointService =
-      CheckpointService(baseUrl: 'http://172.16.0.13:5000');
+      CheckpointService(baseUrl: 'http://172.16.0.107:5000');
 
   final AStar aStar = AStar(Graph()); // Graph for A* algorithm
   StreamSubscription<Position>? _positionStream;
   bool _userMovedCamera = false;
-
+  bool _initialCameraSet =
+      false; // To track if the initial camera position is set
   @override
   void initState() {
     super.initState();
@@ -64,6 +65,14 @@ class _CheckpointMapState extends State<CheckpointMap> {
         _currentPosition = LatLng(position.latitude, position.longitude);
       });
 
+      // Set initial camera position only once
+      if (!_initialCameraSet && _mapController != null) {
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(_currentPosition!, 14),
+        );
+        _initialCameraSet = true;
+      }
+
       _positionStream = Geolocator.getPositionStream(
         locationSettings: LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -74,9 +83,12 @@ class _CheckpointMapState extends State<CheckpointMap> {
           _currentPosition = LatLng(pos.latitude, pos.longitude);
         });
 
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLng(_currentPosition!),
-        );
+        // Do not re-center the camera automatically when the user moves it
+        if (!_userMovedCamera && _mapController != null) {
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLng(_currentPosition!),
+          );
+        }
       });
 
       await _fetchCheckpoints();
@@ -250,8 +262,6 @@ class _CheckpointMapState extends State<CheckpointMap> {
       return _isCheckpointAlongRoute(route, position);
     }).toList();
 
-    print("Relevant checkpoints: $relevantCheckpoints");
-
     // Optionally adjust the route based on checkpoint statuses
     // For now, return the original route without adjustments
     return route;
@@ -333,10 +343,12 @@ class _CheckpointMapState extends State<CheckpointMap> {
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
 
-    if (_currentPosition != null) {
+    // Set the initial camera position only once after the map is created
+    if (_currentPosition != null && !_initialCameraSet) {
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(_currentPosition!, 14),
       );
+      _initialCameraSet = true;
     }
   }
 
@@ -351,7 +363,6 @@ class _CheckpointMapState extends State<CheckpointMap> {
   }
 
   Future<void> _selectSourceDestination(String type, LatLng location) async {
-    print("$type location selected: $location");
     setState(() {
       if (type == 'source') {
         _selectedSource = location;
@@ -412,6 +423,44 @@ class _CheckpointMapState extends State<CheckpointMap> {
     });
   }
 
+  Widget _buildLegend() {
+    return Positioned(
+      bottom: 20,
+      left: 10,
+      child: Card(
+        color: Colors.white.withOpacity(0.9),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(6.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildLegendItem(Colors.green, 'Smooth Movement'),
+              _buildLegendItem(Colors.orange, 'Moderate Movement'),
+              _buildLegendItem(Colors.red, 'Congested Movement'),
+              _buildLegendItem(Colors.blue, 'Closed Checkpoint'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      children: [
+        Icon(Icons.circle, size: 10, color: color),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.black),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeaderBar() {
     return Positioned(
       top: 0,
@@ -469,7 +518,7 @@ class _CheckpointMapState extends State<CheckpointMap> {
                 _mapController = controller;
               },
               initialCameraPosition: CameraPosition(
-                target: _currentPosition ?? LatLng(0, 0),
+                target: _currentPosition ?? LatLng(32.22503, 35.26097),
                 zoom: 10,
               ),
               myLocationEnabled: true,
@@ -502,11 +551,18 @@ class _CheckpointMapState extends State<CheckpointMap> {
       body: Stack(
         children: [
           GoogleMap(
-            onMapCreated: _onMapCreated,
-            onCameraMoveStarted: _onCameraMoveStarted,
-            onCameraIdle: _onCameraIdle,
+            onMapCreated: (controller) {
+              _mapController = controller;
+
+              if (_currentPosition != null && !_initialCameraSet) {
+                _mapController?.animateCamera(
+                  CameraUpdate.newLatLngZoom(_currentPosition!, 14),
+                );
+                _initialCameraSet = true;
+              }
+            },
             initialCameraPosition: CameraPosition(
-              target: _currentPosition ?? LatLng(0, 0),
+              target: _currentPosition ?? LatLng(32.22503, 35.26097),
               zoom: 14,
             ),
             markers: _markers,
@@ -514,6 +570,7 @@ class _CheckpointMapState extends State<CheckpointMap> {
             myLocationEnabled: true,
             myLocationButtonEnabled: true,
           ),
+          _buildLegend(),
           _buildHeaderBar(),
         ],
       ),

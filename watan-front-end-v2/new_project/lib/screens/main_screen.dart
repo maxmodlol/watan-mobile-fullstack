@@ -27,23 +27,30 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        children: const [
-          HomeScreen(),
-          ProductListScreen(),
-          ConversationsScreen(), // Add the Product List Screen here
-
-          CheckpointMap(),
-          CheckpointsListPage(),
-
-          ProfileScreen(),
-        ],
+      body: GestureDetector(
+        // Absorb horizontal swipe gestures on the map screen
+        onHorizontalDragUpdate: _currentIndex == 3
+            ? (_) {} // Do nothing on horizontal swipes when on the map
+            : null,
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          physics: _currentIndex == 3
+              ? const NeverScrollableScrollPhysics()
+              : const BouncingScrollPhysics(),
+          children: const [
+            HomeScreen(),
+            ProductListScreen(),
+            ConversationsScreen(),
+            CheckpointMap(), // Map screen
+            CheckpointsListPage(),
+            ProfileScreen(),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

@@ -7,18 +7,19 @@ class ProductService {
 
   ProductService({required this.baseUrl});
 
-  /// Fetch all products with optional filters
   Future<List<dynamic>> fetchProducts({
     String? category,
     String? search,
     double? minPrice,
     double? maxPrice,
+    String? user, // New user filter
   }) async {
     final queryParameters = {
       if (category != null) 'category': category,
       if (search != null) 'search': search,
       if (minPrice != null) 'minPrice': minPrice.toString(),
       if (maxPrice != null) 'maxPrice': maxPrice.toString(),
+      if (user != null) 'user': user, // Add user filter
     };
 
     final uri = Uri.parse('$baseUrl/api/products')
@@ -30,6 +31,53 @@ class ProductService {
       return json.decode(response.body);
     } else {
       throw Exception('Failed to fetch products');
+    }
+  }
+
+  Future<List<dynamic>> fetchMyProducts(String? token) async {
+    final uri = Uri.parse('$baseUrl/api/products/user-products');
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to fetch user products');
+    }
+  }
+
+  /// Add sponsorship to a product
+  /// Add sponsorship to a product
+  Future<void> addSponsorship({
+    required String productId,
+    required double amountPaid,
+    List<String>? targetLocations,
+    required bool nationwide,
+    required String token,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/products/add-sponsorship');
+
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode({
+        'productId': productId,
+        'amountPaid': amountPaid,
+        'targetLocations': targetLocations,
+        'nationwide': nationwide,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to add sponsorship: ${response.body}');
     }
   }
 

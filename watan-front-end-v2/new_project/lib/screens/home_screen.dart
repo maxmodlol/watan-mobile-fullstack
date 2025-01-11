@@ -235,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _getImageUrl(String imagePath) {
-    const String baseUrl = "http://172.16.0.13:5000"; // Your backend URL
+    const String baseUrl = "http://172.16.0.107:5000"; // Your backend URL
     return "$baseUrl$imagePath";
   }
 

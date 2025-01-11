@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:new_project/models/sponserShip_model.dart';
 import 'package:new_project/screens/AddProductScreen.dart';
 import 'package:new_project/screens/ProductDetailsScreen.dart';
+import 'package:new_project/screens/myProduct_screen.dart';
 import '../services/productService.dart';
 import '../models/product_model.dart';
 
@@ -22,7 +24,7 @@ class _FilterOptions {
 
 class _ProductListScreenState extends State<ProductListScreen> {
   final ProductService productService =
-      ProductService(baseUrl: 'http://172.16.0.13:5000');
+      ProductService(baseUrl: 'http://172.16.0.107:5000');
 
   List<Product> products = [];
   bool isLoading = true;
@@ -36,8 +38,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _fetchProducts();
   }
 
-  // Modify _fetchProducts to accept optional filter parameters
-  Future<void> _fetchProducts({_FilterOptions? filterOpts}) async {
+  Future<void> _fetchProducts({
+    _FilterOptions? filterOpts,
+    String? userId,
+  }) async {
     setState(() => isLoading = true);
 
     try {
@@ -46,10 +50,24 @@ class _ProductListScreenState extends State<ProductListScreen> {
         search: filterOpts?.search,
         minPrice: filterOpts?.minPrice,
         maxPrice: filterOpts?.maxPrice,
+        user: userId,
       );
 
+      // Sort sponsored products first
+      List<Product> sortedProducts =
+          data.map((item) => Product.fromJson(item)).toList()
+            ..sort((a, b) {
+              if (a.isSponsored && !b.isSponsored) {
+                return -1; // Sponsored products come first
+              } else if (!a.isSponsored && b.isSponsored) {
+                return 1; // Non-sponsored products come later
+              }
+              return 0;
+            });
+
+      // Limit to max 10 products
       setState(() {
-        products = data.map((item) => Product.fromJson(item)).toList();
+        products = sortedProducts.take(50).toList();
         isLoading = false;
       });
     } catch (e) {
@@ -79,7 +97,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   String _getImageUrl(String imagePath) {
-    const String baseUrl = "http://172.16.0.13:5000";
+    const String baseUrl = "http://172.16.0.107:5000";
     return "$baseUrl$imagePath";
   }
 
@@ -98,7 +116,27 @@ class _ProductListScreenState extends State<ProductListScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const Spacer(),
-            // Filter icon with a circular background
+            // My Products icon
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.person, color: Colors.white),
+                tooltip: 'My Products',
+                splashRadius: 24,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const MyProductsScreen()),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Filter icon
             Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
@@ -111,10 +149,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 onPressed: _showFilterSheet,
               ),
             ),
-            const SizedBox(width: 8),
           ],
         ),
       ),
+
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green.shade600,
         child: const Icon(Icons.add, color: Colors.white),
@@ -172,30 +210,56 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ),
           );
         },
-        child: Row(
+        child: Stack(
           children: [
-            if (product.images.isNotEmpty)
-              SizedBox(
-                width: 120,
-                height: 120,
-                child: Image.network(
-                  _getImageUrl(product.images.first),
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey.shade300,
-                    child: const Center(
-                      child: Icon(Icons.broken_image,
-                          color: Colors.grey, size: 50),
+            Row(
+              children: [
+                if (product.images.isNotEmpty)
+                  SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: Image.network(
+                      _getImageUrl(product.images.first),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey.shade300,
+                        child: const Center(
+                          child: Icon(Icons.broken_image,
+                              color: Colors.grey, size: 50),
+                        ),
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: _buildProductDetails(product),
+                  ),
+                ),
+              ],
+            ),
+            // Badge for sponsored products
+            if (product.isSponsored)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade700,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Sponsored',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   ),
                 ),
               ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: _buildProductDetails(product),
-              ),
-            ),
           ],
         ),
       ),
@@ -280,7 +344,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   Future<void> _fetchCategories() async {
     try {
-      final productService = ProductService(baseUrl: 'http://172.16.0.13:5000');
+      final productService =
+          ProductService(baseUrl: 'http://172.16.0.107:5000');
       final data = await productService.fetchCategories();
       if (mounted) {
         setState(() {

@@ -12,7 +12,7 @@ class ConversationsScreen extends StatefulWidget {
 
 class _ConversationsScreenState extends State<ConversationsScreen> {
   final MessageService messageService =
-      MessageService(baseUrl: 'http://172.16.0.13:5000');
+      MessageService(baseUrl: 'http://172.16.0.107:5000');
   List<Conversation> conversations = [];
   bool isLoading = true;
 

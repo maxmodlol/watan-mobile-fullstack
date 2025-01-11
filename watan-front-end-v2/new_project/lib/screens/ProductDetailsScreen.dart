@@ -9,13 +9,14 @@ class ProductDetailsScreen extends StatelessWidget {
       : super(key: key);
 
   String _getImageUrl(String imagePath) {
-    const String baseUrl = "http://172.16.0.13:5000";
+    const String baseUrl = "http://172.16.0.107:5000";
     return "$baseUrl$imagePath";
   }
 
   Future<void> _sendMessageToOwner(BuildContext context) async {
     try {
-      final messageService = MessageService(baseUrl: 'http://172.16.0.13:5000');
+      final messageService =
+          MessageService(baseUrl: 'http://172.16.0.107:5000');
       final content =
           "I am interested in purchasing '${product.name}' for \$${product.price?.toStringAsFixed(2) ?? 'N/A'}.";
       await messageService.startConversation(product.ownerId, content);

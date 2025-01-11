@@ -14,7 +14,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final MessageService messageService =
-      MessageService(baseUrl: 'http://172.16.0.13:5000');
+      MessageService(baseUrl: 'http://172.16.0.107:5000');
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
